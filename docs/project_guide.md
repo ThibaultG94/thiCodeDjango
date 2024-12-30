@@ -40,6 +40,38 @@ L'assistant sera capable de :
    - Prévisualisation en temps réel
    - Zone de dépôt d'images
 
+## Architecture et Communication des Services
+
+### Flux de données
+
+1. Application Django (Frontend + Backend)
+
+   - Gère l'interface utilisateur et les requêtes initiales
+   - Stocke les projets et leurs configurations
+   - Gère l'authentification et les limitations d'utilisation
+
+2. Service FastAPI (Middleware IA)
+
+   - Point d'entrée unique pour les modèles d'IA
+   - Gère la file d'attente des requêtes
+   - Assure la communication avec StarCoder-3b
+   - Met en cache les résultats fréquents
+
+3. StarCoder-3b (Service IA)
+   - Modèle déployé avec des endpoints REST
+   - Configuration optimisée pour les ressources disponibles
+   - Quantifié pour réduire l'empreinte mémoire
+
+### Protocole de Communication
+
+diagram-sequence
+User->Django: Requête Web
+Django->FastAPI: API Call
+FastAPI->StarCoder: Inference Request
+StarCoder->FastAPI: Response
+FastAPI->Django: Processed Result
+Django->User: Web Response
+
 ## Plan de Développement
 
 ### Phase 1 : Configuration et Base du Projet (2-3 semaines)
@@ -109,23 +141,25 @@ L'assistant sera capable de :
 ## Structure du Projet
 
 ```
+
 html-ai-assistant/
 ├── backend/
-│   ├── config/              # Configuration Django
-│   ├── apps/
-│   │   ├── core/           # Application principale
-│   │   ├── ai_models/      # Intégration des modèles
-│   │   └── api/            # Endpoints API
-│   ├── models/             # Modèles pré-entrainés
-│   └── tests/              # Tests
+│ ├── config/ # Configuration Django
+│ ├── apps/
+│ │ ├── core/ # Application principale
+│ │ ├── ai_models/ # Intégration des modèles
+│ │ └── api/ # Endpoints API
+│ ├── models/ # Modèles pré-entrainés
+│ └── tests/ # Tests
 ├── frontend/
-│   ├── src/
-│   │   ├── components/     # Composants React
-│   │   ├── services/       # Services API
-│   │   └── utils/          # Utilitaires
-│   └── public/
-├── docs/                   # Documentation
-└── scripts/               # Scripts utilitaires
+│ ├── src/
+│ │ ├── components/ # Composants React
+│ │ ├── services/ # Services API
+│ │ └── utils/ # Utilitaires
+│ └── public/
+├── docs/ # Documentation
+└── scripts/ # Scripts utilitaires
+
 ```
 
 ## Prochaines Étapes
@@ -173,3 +207,7 @@ Instructions pour contribuer au projet :
 - Processus de revue
 - Gestion des branches
 - Tests requis
+
+```
+
+```
