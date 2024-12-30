@@ -1,223 +1,175 @@
-# Assistant IA pour le Développement Web
+# Assistant IA HTML - Guide de Développement
 
-## Guide de Développement et Documentation
+## Vision du Projet
 
-### Introduction
+Notre objectif est de créer un assistant IA spécialisé dans le développement web qui combine :
 
-Ce projet vise à créer un assistant intelligent spécialisé dans le développement web, combinant génération de code, analyse d'accessibilité et traitement d'images. Notre approche s'inspire des principes du développement collaboratif, où chaque composant joue un rôle spécifique tout en contribuant à un objectif commun.
+- La génération et la validation de code HTML/CSS
+- L'analyse d'images pour la création de code
+- Des explications pédagogiques sur les bonnes pratiques
 
-### Vision et Objectifs
+### Caractéristiques Principales
 
-Notre assistant IA cherche à démocratiser les bonnes pratiques du développement web en :
+L'assistant sera capable de :
 
-- Générant du code HTML/CSS accessible et conforme aux standards
-- Fournissant des explications pédagogiques sur les choix techniques
-- Transformant des maquettes visuelles en code fonctionnel
-- Guidant les développeurs vers une meilleure accessibilité web
+- Générer du code HTML/CSS valide et accessible
+- Analyser et corriger du code existant
+- Convertir des maquettes en code
+- Fournir des explications détaillées sur les choix techniques
+- Suggérer des améliorations d'accessibilité
 
-### Architecture Technique
+## Architecture Technique
 
-Notre architecture s'articule autour de trois composants majeurs qui travaillent en synergie :
+### Composants Principaux
 
-1. Le Cerveau Analytique (StarCoder-3b)
+1. Backend Django
 
-   - Rôle : Analyse et génération de code
-   - Capacités :
-     - Compréhension multilingue du code
-     - Génération de HTML/CSS sémantique
-     - Suggestions d'amélioration du code
-   - Optimisations :
-     - Quantification 4-bit pour optimiser la mémoire
-     - Cache intelligent pour les requêtes fréquentes
-     - Parallélisation des tâches lourdes
+   - API RESTful pour la communication avec les modèles
+   - Gestion des sessions et des requêtes
+   - Système de cache pour optimiser les performances
 
-2. Le Système de Vision
+2. Modèles d'IA
 
-   - Rôle : Analyse des maquettes et images
-   - Composants :
-     - Modèle de vision pour l'analyse de layouts
-     - Pipeline de transformation image-vers-texte
-     - Système de validation des résultats
+   - StarCoder-3b pour la génération de code
+   - Modèle de vision (LayoutLM/Donut) pour l'analyse d'images
+   - Système d'intégration entre les modèles
 
-3. L'Interface Utilisateur
-   - Rôle : Interaction et visualisation
-   - Fonctionnalités :
-     - Éditeur de code en temps réel
-     - Prévisualisation instantanée
-     - Suggestions contextuelles
-     - Interface de téléchargement d'images
+3. Frontend
+   - Interface utilisateur réactive
+   - Éditeur de code intégré
+   - Prévisualisation en temps réel
+   - Zone de dépôt d'images
 
-### Plan de Développement
+## Plan de Développement
 
-#### Phase 1 : Fondations (2-3 semaines)
+### Phase 1 : Configuration et Base du Projet (2-3 semaines)
 
-1. Semaine 1 : Configuration de l'Environnement
+1. Mise en place de l'environnement
 
-   - Création du repository Git
-   - Setup de l'environnement virtuel Python
-   - Installation des dépendances de base
-   - Configuration de Django et de la base de données
+   - Configuration du serveur
+   - Installation des dépendances
+   - Mise en place de l'environnement de développement
 
-2. Semaine 2 : Intégration StarCoder-3b
+2. Structure du projet Django
 
-   - Installation du modèle
+   - Création des applications principales
+   - Configuration de la base de données
+   - Mise en place des tests
+
+3. Intégration de StarCoder-3b
+   - Installation et configuration du modèle
    - Tests de performance
    - Optimisation de la mémoire
-   - Création des premiers endpoints
 
-3. Semaine 3 : Structure Frontend
-   - Setup de l'environnement React
-   - Création des composants de base
-   - Intégration de l'éditeur de code
-   - Tests d'interface utilisateur
+### Phase 2 : Fonctionnalités de Base (4-5 semaines)
 
-#### Phase 2 : Développement Core (4-5 semaines)
+1. API de génération de code
 
-1. Fonctionnalités de Base
-
-   - Génération de code HTML/CSS
-   - Validation syntaxique
-   - Suggestions d'accessibilité
+   - Endpoints pour la génération HTML
+   - Validation du code généré
    - Tests unitaires et d'intégration
 
-2. Interface Utilisateur
-   - Éditeur de code avancé
+2. Interface utilisateur
+
+   - Création des composants principaux
+   - Intégration de l'éditeur de code
    - Système de prévisualisation
-   - Gestion des erreurs
-   - Feedback utilisateur
 
-#### Phase 3 : Vision et Intelligence (3-4 semaines)
+3. Système de validation et correction
+   - Vérification de la syntaxe
+   - Suggestions d'amélioration
+   - Contrôle d'accessibilité
 
-1. Système de Vision
+### Phase 3 : Intégration Vision (3-4 semaines)
 
-   - Intégration du modèle de vision
+1. Modèle de vision
+
+   - Intégration du modèle choisi
    - Pipeline de traitement d'images
-   - Conversion layout-vers-code
    - Tests de précision
 
-2. Optimisations
-   - Cache et performance
-   - Gestion de la mémoire
+2. Interface de conversion
+   - Upload d'images
+   - Prévisualisation des résultats
+   - Édition du code généré
+
+### Phase 4 : Optimisation et Polish (2-3 semaines)
+
+1. Performance
+
+   - Optimisation des modèles
+   - Mise en cache
    - Tests de charge
+
+2. Interface utilisateur
+   - Améliorations UX
+   - Responsive design
    - Documentation utilisateur
 
-### Structure du Projet
+## Structure du Projet
 
 ```
-web-ai-assistant/
-├── .github/
-│   └── workflows/            # CI/CD pipelines
+html-ai-assistant/
 ├── backend/
 │   ├── config/              # Configuration Django
-│   ├── core/               # Application principale
-│   │   ├── models/         # Modèles de données
-│   │   ├── services/       # Services métier
-│   │   └── views/          # Vues et API
-│   ├── ai/                 # Logique IA
-│   │   ├── models/         # Modèles IA
-│   │   ├── processors/     # Traitement des données
-│   │   └── utils/          # Utilitaires
+│   ├── apps/
+│   │   ├── core/           # Application principale
+│   │   ├── ai_models/      # Intégration des modèles
+│   │   └── api/            # Endpoints API
+│   ├── models/             # Modèles pré-entrainés
 │   └── tests/              # Tests
 ├── frontend/
 │   ├── src/
 │   │   ├── components/     # Composants React
 │   │   ├── services/       # Services API
-│   │   └── styles/         # Styles CSS
+│   │   └── utils/          # Utilitaires
 │   └── public/
-├── docs/
-│   ├── api/                # Documentation API
-│   ├── models/             # Documentation modèles
-│   └── guides/             # Guides utilisateur
+├── docs/                   # Documentation
 └── scripts/               # Scripts utilitaires
 ```
 
-### Configuration Technique
+## Prochaines Étapes
 
-#### Environnement Requis
-
-- Python 3.9+
-- Node.js 16+
-- PostgreSQL 13+
-- Redis (pour le cache)
-
-#### Dépendances Principales
-
-- Django 4.2+
-- React 18+
-- StarCoder-3b
-- Transformers
-- PyTorch
-
-### Guide d'Installation
-
-1. Cloner le repository :
-
-```bash
-git clone https://github.com/user/web-ai-assistant.git
-cd web-ai-assistant
-```
-
-2. Créer l'environnement virtuel :
-
-```bash
-python -m venv venv
-source venv/bin/activate  # ou .\venv\Scripts\activate sur Windows
-```
-
-3. Installer les dépendances :
-
-```bash
-pip install -r requirements.txt
-cd frontend && npm install
-```
-
-4. Configuration :
-
-- Copier `.env.example` vers `.env`
-- Configurer les variables d'environnement
-- Initialiser la base de données
-
-5. Lancer les serveurs de développement :
-
-```bash
-# Terminal 1 : Backend
-python manage.py runserver
-
-# Terminal 2 : Frontend
-cd frontend && npm start
-```
-
-### Guides de Contribution
-
-1. Workflow Git
-
-   - Utilisation de feature branches
-   - Pull requests obligatoires
-   - Tests requis avant merge
-
-2. Standards de Code
-
-   - Python : PEP 8
-   - JavaScript : ESLint + Prettier
-   - Tests unitaires requis
-
-3. Documentation
-   - Docstrings pour les fonctions
-   - JSDoc pour les composants React
-   - Documentation API avec OpenAPI
-
-### Ressources et Documentation
-
-- [Documentation Django](https://docs.djangoproject.com/)
-- [Documentation React](https://reactjs.org/docs/)
-- [Guide StarCoder](https://huggingface.co/bigcode/starcoder)
-- [Standards W3C](https://www.w3.org/standards/)
-- [Guide Accessibilité](https://www.w3.org/WAI/)
-
-### Prochaines Étapes Immédiates
-
-1. Création du repository GitHub
-2. Setup de l'environnement de développement
-3. Installation de StarCoder-3b
-4. Premiers tests d'intégration
+1. Création du repository
+2. Configuration de l'environnement de développement
+3. Installation des dépendances de base
+4. Premier test d'intégration de StarCoder-3b
 5. Création du squelette Django
+
+## Notes Techniques
+
+### Ressources Serveur
+
+- CPU : Intel Xeon D1520 (4c/8t)
+- RAM : 32 Go ECC
+- Stockage : 2×480 Go SSD RAID
+
+### Optimisations Prévues
+
+- Quantification des modèles
+- Système de cache intelligent
+- Gestion efficace de la mémoire
+- Parallélisation des tâches
+
+## Questions en Suspens
+
+- Choix final du modèle de vision
+- Stratégie de déploiement
+- Gestion des mises à jour des modèles
+- Stratégie de backup et restauration
+
+## Ressources et Documentation
+
+- Documentation StarCoder : [lien]
+- Documentation Django : [lien]
+- Guide d'accessibilité W3C : [lien]
+- Documentation API Vision : [lien]
+
+## Contribution
+
+Instructions pour contribuer au projet :
+
+- Style de code
+- Processus de revue
+- Gestion des branches
+- Tests requis
