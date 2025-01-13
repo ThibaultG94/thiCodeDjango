@@ -1,117 +1,65 @@
-# Feuille de Route - WebWise AI
+# Roadmap - ThiCodeAI
 
-## État Actuel du Projet
+## Phase 1: Foundations (Sprint 1-2)
 
-### ✅ Complété
+### Infrastructure & Architecture
 
-- Structure initiale du projet créée
-- Plan de développement établi
-- Guide du projet créé
-- Gitignore configuré
+- Initial Django project configuration
+- Setting up the development environment
+- PostgreSQL database configuration
+- Project structure and organization of Django applications
 
-### 🏃 En Cours
+### Frontend - User interface (Django Templates)
 
-- Documentation détaillée
-- Préparation du déploiement StarCoder-3b
+- Creation of basic templates (layout, header, footer)
+- Authentication system (login, register, profile)
+- Home page with features presentation
+- Basic chat interface for AI interaction
 
-### ⏳ À Venir
+## Phase 2: Core Backend (Sprint 3-4)
 
-#### Phase 1 : Installation StarCoder-3b sur le Serveur
+### Django backend
 
-- [ ] Configuration de l'environnement serveur
-- [ ] Installation des dépendances nécessaires
-- [ ] Déploiement du modèle de base
-- [ ] Tests de performances et optimisations
-- [ ] Documentation du processus de déploiement
+- Data models for users and conversations
+- Chat session management system
+- REST API for frontend/backend interaction
+- Unit and integration testing
 
-#### Phase 2 : Application Django Principale
+### FastAPI Service
 
-- [ ] Configuration du projet Django
-- [ ] Structure de base de l'application
-- [ ] Système d'authentification
-- [ ] Interface d'administration
-- [ ] Templates de base
+- FastAPI service configuration
+- Basic endpoints for interaction with llama2
+- Queue system to manage requests
+- Performance testing and optimization
 
-#### Phase 3 : Services FastAPI pour l'IA
+## Phase 3: AI integration (Sprint 5-6)
 
-- [ ] Configuration de l'environnement FastAPI
-- [ ] API pour StarCoder-3b
-- [ ] Système de communication Django-FastAPI
-- [ ] Tests d'intégration
-- [ ] Documentation API
+### llama2 Integration
 
-#### Phase 4 : Interface Utilisateur
+- llama2 environment configuration
+- Setting up basic prompts
+- Cache system for frequently asked questions
+- Performance monitoring
 
-- [ ] Design de l'interface
-- [ ] Implémentation des composants principaux
-- [ ] Intégration avec les APIs
-- [ ] Tests utilisateur
+### Knowledge Base
 
-#### Phase 5 : Optimisation et Extensions
+- ChromaDB integration for documentation
+- Initial import of documentation (Mozilla, official)
+- Indexing and search system
+- Answer relevance tests
 
-- [ ] Amélioration des performances
-- [ ] Ajout de fonctionnalités supplémentaires
-- [ ] Documentation utilisateur complète
-- [ ] Préparation pour la production
+## Phase 4: Enrichment (Sprint 7-8)
 
-## Plan d'Action Immédiat
+### Advanced features
 
-### Semaine 1 : Préparation StarCoder-3b
+- Conversation history
+- Conversation export
+- Contextual suggestions
+- Administration interface
 
-1. Jour 1-2 :
+### Optimization & Deployment
 
-   - Finalisation de la documentation
-   - Mise en place de l'environnement serveur
-   - Tests initiaux de charge
-
-2. Jour 3-4 :
-
-   - Installation de StarCoder-3b
-   - Configuration de la quantification
-   - Tests de base
-
-3. Jour 5 :
-   - Documentation du déploiement
-   - Vérification des performances
-   - Planification des prochaines étapes
-
-### Semaine 2 : Configuration Django
-
-1. Jour 1-3 :
-
-   - Mise en place du projet Django
-   - Configuration de base
-   - Structure des applications
-
-2. Jour 4-5 :
-   - Système d'authentification
-   - Templates initiaux
-   - Tests de base
-
-## Points d'Attention
-
-### Déploiement StarCoder-3b
-
-- Gestion efficace de la mémoire
-- Système de mise à jour du modèle
-- Monitoring des performances
-
-### Application Django
-
-- Séparation claire des responsabilités
-- Sécurité des communications
-- Scalabilité de l'architecture
-
-### Service FastAPI
-
-- Optimisation des requêtes
-- Gestion des erreurs
-- Documentation API claire
-
-## Mesures de Réussite
-
-- StarCoder-3b opérationnel sur le serveur
-- Temps de réponse acceptable (<2s)
-- Communication fluide entre les services
-- Interface utilisateur intuitive
-- Documentation complète et à jour
+- Performance optimization
+- Deployment configuration
+- User documentation
+- Load tests
