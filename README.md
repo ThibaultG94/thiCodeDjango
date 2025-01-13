@@ -1,26 +1,26 @@
-# WebWise AI 🤖
+# ThiCodeAI 🤖
 
-Un assistant intelligent pour le développement web, combinant génération de code, analyse d'accessibilité et traitement d'images. Ce projet utilise StarCoder-3b pour la génération de code et l'analyse, avec une architecture moderne Django/FastAPI.
+An intelligent assistant for web development, combining code generation, accessibility analysis and image processing. This project uses llama2 for code generation and analysis, with a modern Django/FastAPI architecture.
 
-## 🌟 Fonctionnalités
+## 🌟 Features
 
-- Génération de code HTML/CSS accessible et sémantique
-- Analyse et suggestions d'amélioration de code
-- Conversion de maquettes en code (à venir)
-- Explications détaillées des choix techniques
-- Interface utilisateur intuitive
+- Accessible and semantic HTML/CSS code generation
+- Code analysis and improvement suggestions
+- Converting mock-ups into code (coming soon)
+- Detailed explanations of technical choices
+- Intuitive user interface
 
 ## 🔧 Technologies
 
-- StarCoder-3b pour l'analyse et la génération de code
-- Django pour l'application principale
-- FastAPI pour les services d'IA
-- React pour l'interface utilisateur
-- PostgreSQL pour la base de données
+- llama2 for code analysis and generation
+- Django for the main application
+- FastAPI for AI services
+- React or Django Templates for the user interface
+- PostgreSQL for the database
 
 ## 🚀 Installation
 
-1. Prérequis :
+1. Requirements :
 
    - Python 3.9+
    - Node.js 16+
@@ -29,24 +29,24 @@ Un assistant intelligent pour le développement web, combinant génération de c
 2. Installation :
 
 ```bash
-# Cloner le repository
-git clone https://github.com/votre-nom/webwise-ai.git
-cd webwise-ai
+# Clone repository
+git clone https://github.com/ThibaultG94/thicodeAi.git
+cd thicodeAi
 
-# Créer l'environnement virtuel
+# Creating the virtual environment
 python -m venv venv
-source venv/bin/activate  # ou .\venv\Scripts\activate sur Windows
+source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 
-# Installer les dépendances
+# Installing dependencies
 pip install -r requirements.txt
 ```
 
-3. Configuration :
+3. Setting :
 
-   - Copier `.env.example` en `.env`
-   - Configurer les variables d'environnement
+   - Copy `.env.example` en `.env`
+   - Setting environment variables
 
-4. Lancer l'application :
+4. Launch application :
 
 ```bash
 python manage.py runserver
@@ -54,22 +54,12 @@ python manage.py runserver
 
 ## 📖 Documentation
 
-La documentation complète est disponible dans le dossier `docs/` :
+Full documentation is available in the `docs/` folder:
 
-- Guide du projet : `docs/project_guide.md`
-- Feuille de route : `docs/roadmap.md`
-- Documentation API : `docs/api/`
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! Consultez `CONTRIBUTING.md` pour les directives.
+- Project guide : `docs/project_guide.md`
+- Roadmap : `docs/roadmap.md`
+- API documentation : `docs/api/`
 
 ## 📝 License
 
-Ce projet est sous licence MIT - voir le fichier LICENSE pour plus de détails.
-
-## 🙏 Remerciements
-
-- Équipe HuggingFace pour StarCoder-3b
-- Communauté Django
-- Contributeurs du projet
+This project is licensed under the MIT license - see the LICENSE file for details.
