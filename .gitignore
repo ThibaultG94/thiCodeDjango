@@ -1,9 +1,9 @@
-# Environnement virtuel Python
+# Python virtual environment
 venv/
 env/
 .env
 
-# Fichiers Python compilés
+# Compiled Python files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,36 +13,36 @@ dist/
 build/
 *.egg-info/
 
-# Fichiers de test et couverture
+# Test files and coverage
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Fichiers système
+# System files
 .DS_Store
 .idea/
 .vscode/
 
-# Fichiers de configuration locaux
+# Local configuration files
 local_settings.py
 
-# Fichiers de base de données
+# Database files
 *.sqlite3
 
-# Dossier des médias locaux
+# Local media file
 media/
 
-# Fichiers Node.js
+# Node.js files
 node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
 
-# Fichiers de build frontend
+# Frontend build files
 frontend/build/
 frontend/dist/
 
-# Fichiers de modèles IA
+# IA model files
 models/*.bin
 models/*.pt
 models/*.pth
