@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Connexion - ThiCodeAI{% endblock %}
+
+{% block content %}
+<div>
+    <h2>Connexion</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Se connecter</button>
+    </form>
+    <p>Pas encore de compte ? <a href="{% url 'accounts:signup' %}">S'inscrire</a></p>
+</div>
+{% endblock %}
