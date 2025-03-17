@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ conversation.title|default:"Nouvelle conversation" }} - ThiCodeAI{% endblock %}
+
+{% block content %}
+<div class="h-screen flex flex-col">
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar with conversation list -->
+        <div class="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden md:block">
+            <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+                <h2 class="text-lg font-medium text-gray-900">Conversations</h2>
+                <a href="{% url 'chat:new' %}" class="text-primary-600 hover:text-primary-800"
+                    title="Nouvelle conversation">
+                    +
+                </a>
+            </div>
+            <nav class="mt-2 flex-1 px-2 bg-white space-y-1 overflow-y-auto">
+                {% for conv in request.user.conversations.all %}
+                <a href="{% url 'chat:conversation_detail' conv.id %}"
+                    class="{% if conv.id == conversation.id %}bg-gray-100 text-gray-900{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                    {{ conv.title|default:"Nouvelle conversation"|truncatechars:20 }}
+                </a>
+                {% endfor %}
+            </nav>
+        </div>
+
+        <!-- Main chat area -->
+        <div class="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+            <!-- Chat header -->
+            <div class="border-b border-gray-200 bg-white p-4 flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        {{ conversation.title|default:"Nouvelle conversation" }}
+                    </h1>
+                </div>
+                <div>
+                    <button id="rename-button" class="text-gray-500 hover:text-gray-700">
+                        Renommer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message list -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                {% for message in messages %}
+                <div class="flex {% if message.role == 'user' %}justify-end{% endif %}">
+                    <div
+                        class="max-w-xl {% if message.role == 'user' %}bg-primary-100{% else %}bg-white{% endif %} rounded-lg p-4 shadow-sm">
+                        <div class="text-sm text-gray-500 mb-1">
+                            {{ message.get_role_display }}
+                        </div>
+                        <div class="text-gray-800 whitespace-pre-wrap">
+                            {{ message.content }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Message input -->
+            <div class="border-t border-gray-200 bg-white p-4">
+                <form id="message-form" class="flex items-center">
+                    <textarea id="message-input"
+                        class="form-input flex-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="Tape ton message ici..." rows="2"></textarea>
+                    <button type="submit" class="ml-4 btn-primary">
+                        Envoyer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simple script to manage message delivery
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('message-form');
+        const input = document.getElementById('message-input');
+        const messagesContainer = document.getElementById('messages-container');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const message = input.value.trim();
+            if (!message) return;
+
+            input.value = '';
+
+            try {
+                const response = await fetch('{% url "chat:send_message" conversation.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Réponse réseau non valide');
+                }
+
+                const data = await response.json();
+
+                // Add user message
+                appendMessage('user', data.user_message.content);
+
+                // Add AI message
+                appendMessage('assistant', data.ai_message.content);
+
+                // Scroll down
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('Une erreur s\'est produite lors de l\'envoi de votre message. Veuillez réessayer.');
+            }
+        });
+
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${role === 'user' ? 'justify-end' : ''}`;
+
+            messageDiv.innerHTML = `
+                <div class="max-w-xl ${role === 'user' ? 'bg-primary-100' : 'bg-white'} rounded-lg p-4 shadow-sm">
+                    <div class="text-sm text-gray-500 mb-1">
+                        ${role === 'user' ? 'Utilisateur' : 'Assistant'}
+                    </div>
+                    <div class="text-gray-800 whitespace-pre-wrap">
+                        ${content}
+                    </div>
+                </div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+        }
+
+        // Auto-scroll down when loading
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Functionality for renaming the conversation
+        const renameButton = document.getElementById('rename-button');
+
+        renameButton.addEventListener('click', function () {
+            const newTitle = prompt('Entre un nouveau titre pour cette conversation:', '{{ conversation.title|default:"Nouvelle Conversation" }}');
+
+            if (newTitle && newTitle.trim()) {
+                // Send an AJAX request to update the title
+                // This would require a new view and a new URL model
+                // For now, simply reload the page
+                alert('La fonctionnalité de mise à jour du titre sera implémentée plus tard.');
+            }
+        });
+    });
+</script>
+{% endblock %}

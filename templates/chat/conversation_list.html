@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mes conversations - ThiCodeAI{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-semibold text-gray-900">Mes conversations</h1>
+            <a href="{% url 'chat:new' %}" class="btn-primary">Nouvelle conversation</a>
+        </div>
+
+        <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-md">
+            <ul class="divide-y divide-gray-200">
+                {% for conversation in conversations %}
+                <li>
+                    <a href="{% url 'chat:conversation_detail' conversation.id %}" class="block hover:bg-gray-50">
+                        <div class="px-4 py-4 sm:px-6">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-medium text-primary-600 truncate">
+                                    {{ conversation.title|default:"Nouvelle conversation" }}
+                                </p>
+                                <div class="ml-2 flex-shrink-0 flex">
+                                    <p
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        {{ conversation.messages.count }} messages
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-2 sm:flex sm:justify-between">
+                                <div class="sm:flex">
+                                    <p class="flex items-center text-sm text-gray-500">
+                                        {% with last_message=conversation.messages.last %}
+                                        {% if last_message %}
+                                        {{ last_message.content|truncatechars:50 }}
+                                        {% else %}
+                                        Aucun message
+                                        {% endif %}
+                                        {% endwith %}
+                                    </p>
+                                </div>
+                                <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                    <p>
+                                        Mis à jour {{ conversation.updated_at|timesince }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </li>
+                {% empty %}
+                <li class="px-4 py-6 text-center text-gray-500">
+                    <p>Tu n'as pas encore de conversations.</p>
+                    <p class="mt-2">
+                        <a href="{% url 'chat:new' %}" class="text-primary-600 hover:text-primary-700">
+                            Commencer une nouvelle conversation
+                        </a>
+                    </p>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

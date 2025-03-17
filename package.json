@@ -1,0 +1,28 @@
+{
+  "name": "thicodeai",
+  "version": "1.0.0",
+  "description": "An intelligent assistant for web development, combining code generation, accessibility analysis and image processing. This project uses llama2 for code generation and analysis, with a modern Django/FastAPI architecture.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "npx @tailwindcss/cli -i ./static/src/input.css -o ./static/css/output.css --watch",
+    "build": "npx @tailwindcss/cli -i ./static/src/input.css -o ./static/css/output.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThibaultG94/thicodeAi.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ThibaultG94/thicodeAi/issues"
+  },
+  "homepage": "https://github.com/ThibaultG94/thicodeAi#readme",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.0.14",
+    "tailwindcss": "^4.0.14"
+  }
+}
