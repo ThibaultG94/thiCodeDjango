@@ -78,3 +78,16 @@ def send_message(request, conversation_id):
         return JsonResponse({'error': 'JSON invalide'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+@login_required
+def delete_conversation(request, conversation_id):
+    """Supprimer une conversation spécifique"""
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
+    
+    if request.method == 'POST':
+        conversation.delete()
+        return redirect('chat:conversation_list')
+    
+    return render(request, 'chat/delete_confirmation.html', {
+        'conversation': conversation
+    })

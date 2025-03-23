@@ -35,9 +35,13 @@
                     </h1>
                 </div>
                 <div>
-                    <button id="rename-button" class="text-gray-500 hover:text-gray-700">
+                    <button id="rename-button" class="text-gray-500 hover:text-gray-700 mr-2">
                         Renommer
                     </button>
+                    <a href="{% url 'chat:delete_conversation' conversation.id %}"
+                        class="text-red-500 hover:text-red-700">
+                        Supprimer
+                    </a>
                 </div>
             </div>
 

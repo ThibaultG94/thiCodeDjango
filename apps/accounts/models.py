@@ -12,6 +12,18 @@ class User(AbstractUser):
 
     # Store user preferences (theme, AI settings, etc.)
     preferences = models.JSONField(default=dict, blank=True)
+    
+    # Default AI model preference
+    @property
+    def ai_model(self):
+        return self.preferences.get('ai_model', 'llama2')
+    
+    @ai_model.setter
+    def ai_model(self, model_name):
+        preferences = self.preferences.copy()
+        preferences['ai_model'] = model_name
+        self.preferences = preferences
+        self.save()
 
     class Meta:
         db_table = 'users' # Explicit name in database

@@ -1,14 +1,43 @@
 @import "tailwindcss";
 
+:root {
+    --color-primary: #4F46E5;
+    --color-primary-hover: #4338CA;
+    --color-bg-subtle: #F9FAFB;
+    --color-bg-accent: #EEF2FF;
+}
+
 @layer components {
+
+    /* Primary buttons with new color */
     .btn-primary {
-        @apply py-2 px-4 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors;
+        @apply py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors;
+    }
+
+    /* Card with slight relief */
+    .card {
+        @apply bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow transition-shadow;
+    }
+
+    /* Cat container with subtle background */
+    .chat-container {
+        @apply bg-gray-50 rounded-lg p-4;
+    }
+
+    /* User message */
+    .message-user {
+        @apply bg-indigo-50 border border-indigo-100 rounded-lg p-4 shadow-sm;
+    }
+
+    /* Message assistant */
+    .message-assistant {
+        @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm;
     }
 
     input[type="text"],
     input[type="password"],
     input[type="email"],
     textarea {
-        @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 focus:ring-opacity-50;
+        @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200;
     }
 }
