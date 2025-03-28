@@ -7,6 +7,7 @@ class Conversation(models.Model):
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    additional_data = models.JSONField(default=dict, blank=True)
     
     def __str__(self):
         return f"{self.title or 'Nouvelle conversation'} - {self.user.username}"

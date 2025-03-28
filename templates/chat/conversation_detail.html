@@ -7,18 +7,18 @@
 <div class="h-screen flex flex-col">
     <div class="flex-1 flex overflow-hidden">
         <!-- Sidebar with conversation list -->
-        <div class="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden md:block">
-            <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">Conversations</h2>
-                <a href="{% url 'chat:new' %}" class="text-primary-600 hover:text-primary-800"
+        <div class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 hidden md:block">
+            <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Conversations</h2>
+                <a href="{% url 'chat:new' %}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                     title="Nouvelle conversation">
                     +
                 </a>
             </div>
-            <nav class="mt-2 flex-1 px-2 bg-white space-y-1 overflow-y-auto">
+            <nav class="mt-2 flex-1 px-2 bg-white dark:bg-gray-800 space-y-1 overflow-y-auto">
                 {% for conv in request.user.conversations.all %}
                 <a href="{% url 'chat:conversation_detail' conv.id %}"
-                    class="{% if conv.id == conversation.id %}bg-gray-100 text-gray-900{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                    class="{% if conv.id == conversation.id %}bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white{% else %}text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                     {{ conv.title|default:"Nouvelle conversation"|truncatechars:20 }}
                 </a>
                 {% endfor %}
@@ -26,20 +26,26 @@
         </div>
 
         <!-- Main chat area -->
-        <div class="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+        <div class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
             <!-- Chat header -->
-            <div class="border-b border-gray-200 bg-white p-4 flex items-center justify-between">
+            <div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex items-center justify-between">
                 <div>
-                    <h1 class="text-xl font-semibold text-gray-900">
+                    <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
                         {{ conversation.title|default:"Nouvelle conversation" }}
                     </h1>
                 </div>
+                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <span>Modèle: </span>
+                    <select id="model-selector" class="ml-2 bg-transparent dark:bg-transparent border-none focus:ring-0 dark:text-gray-300">
+                        <option value="mistral" {% if conversation.additional_data.ai_model == 'mistral' %}selected{% endif %}>Mistral</option>
+                    </select>
+                </div>
                 <div>
-                    <button id="rename-button" class="text-gray-500 hover:text-gray-700 mr-2">
+                    <button id="rename-button" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mr-2">
                         Renommer
                     </button>
                     <a href="{% url 'chat:delete_conversation' conversation.id %}"
-                        class="text-red-500 hover:text-red-700">
+                        class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                         Supprimer
                     </a>
                 </div>
@@ -50,11 +56,11 @@
                 {% for message in messages %}
                 <div class="flex {% if message.role == 'user' %}justify-end{% endif %}">
                     <div
-                        class="max-w-xl {% if message.role == 'user' %}bg-primary-100{% else %}bg-white{% endif %} rounded-lg p-4 shadow-sm">
-                        <div class="text-sm text-gray-500 mb-1">
+                        class="max-w-xl {% if message.role == 'user' %}bg-indigo-50 dark:bg-indigo-900{% else %}bg-white dark:bg-gray-800{% endif %} rounded-lg p-4 shadow-sm">
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">
                             {{ message.get_role_display }}
                         </div>
-                        <div class="text-gray-800 whitespace-pre-wrap">
+                        <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
                             {{ message.content }}
                         </div>
                     </div>
@@ -63,10 +69,10 @@
             </div>
 
             <!-- Message input -->
-            <div class="border-t border-gray-200 bg-white p-4">
+            <div class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
                 <form id="message-form" class="flex items-center">
                     <textarea id="message-input"
-                        class="form-input flex-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        class="form-input flex-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                         placeholder="Tape ton message ici..." rows="2"></textarea>
                     <button type="submit" class="ml-4 btn-primary">
                         Envoyer
@@ -83,6 +89,18 @@
         const form = document.getElementById('message-form');
         const input = document.getElementById('message-input');
         const messagesContainer = document.getElementById('messages-container');
+        const modelSelector = document.getElementById('model-selector');
+
+        // Store model selection when changed
+        modelSelector.addEventListener('change', function() {
+            localStorage.setItem('selected_model', this.value);
+        });
+
+        // Load stored model selection if exists
+        const storedModel = localStorage.getItem('selected_model');
+        if (storedModel) {
+            modelSelector.value = storedModel;
+        }
 
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -92,6 +110,9 @@
 
             input.value = '';
 
+            // Retrieve selected model
+            const selectedModel = modelSelector.value;
+
             try {
                 const response = await fetch('{% url "chat:send_message" conversation.id %}', {
                     method: 'POST',
@@ -99,7 +120,10 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({ 
+                        message: message,
+                        model: selectedModel 
+                    })
                 });
 
                 if (!response.ok) {
@@ -128,11 +152,11 @@
             messageDiv.className = `flex ${role === 'user' ? 'justify-end' : ''}`;
 
             messageDiv.innerHTML = `
-                <div class="max-w-xl ${role === 'user' ? 'bg-primary-100' : 'bg-white'} rounded-lg p-4 shadow-sm">
-                    <div class="text-sm text-gray-500 mb-1">
+                <div class="max-w-xl ${role === 'user' ? 'bg-indigo-50 dark:bg-indigo-900' : 'bg-white dark:bg-gray-800'} rounded-lg p-4 shadow-sm">
+                    <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">
                         ${role === 'user' ? 'Utilisateur' : 'Assistant'}
                     </div>
-                    <div class="text-gray-800 whitespace-pre-wrap">
+                    <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
                         ${content}
                     </div>
                 </div>

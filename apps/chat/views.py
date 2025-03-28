@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 from .models import Conversation, Message
 from django.views.decorators.http import require_POST
@@ -13,8 +14,71 @@ def conversation_list(request):
 
 @login_required
 def new_conversation(request):
-    """Créer une nouvelle conversation et rediriger vers celle-ci"""
-    conversation = Conversation.objects.create(user=request.user, title="Nouvelle Conversation")
+    """Afficher la page pour démarrer une nouvelle conversation"""
+    return render(request, 'chat/new_conversation.html')
+
+@login_required
+@require_POST
+def create_conversation(request):
+    """Créer une nouvelle conversation avec le premier message"""
+    message = request.POST.get('message', '').strip()
+    ai_model = request.POST.get('ai_model', 'mistral')
+    
+    if not message:
+        # Redirect with error message if message is empty
+        messages.error(request, "Le message ne peut pas être vide.")
+        return redirect('chat:new')
+    
+    # Creating conversation
+    conversation = Conversation.objects.create(
+        user=request.user,
+        title="Nouvelle Conversation"
+    )
+    
+    # Store selected model in additional data
+    conversation.additional_data = {'ai_model': ai_model}
+    conversation.save()
+    
+    # Create the first user message
+    user_message = Message.objects.create(
+        conversation=conversation,
+        role='user',
+        content=message
+    )
+    
+    # Get the answer from the AI
+    try:
+        from .mistral_client import MistralClient
+        client = MistralClient()
+        
+        ai_response = client.generate_response(f"""
+        Tu es ThiCodeAI, un assistant de développement web.
+        L'utilisateur te demande: {message}
+        Réponds de manière claire et utile.
+        """)
+        
+        # Create the AI message
+        Message.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=ai_response
+        )
+        
+        # Update conversation title based on first message
+        if len(message) > 50:
+            conversation.title = message[:47] + "..."
+        else:
+            conversation.title = message
+        conversation.save()
+        
+    except Exception as e:
+        # Create an error message if the AI call fails
+        Message.objects.create(
+            conversation=conversation,
+            role='system',
+            content=f"Erreur lors de la génération de la réponse: {str(e)}"
+        )
+    
     return redirect('chat:conversation_detail', conversation_id=conversation.id)
 
 @login_required
@@ -36,6 +100,13 @@ def send_message(request, conversation_id):
     try:
         data = json.loads(request.body)
         message_content = data.get('message')
+        selected_model = data.get('model', 'mistral')  # Retrieve the selected model
+        
+        # Update the template used for this conversation
+        additional_data = conversation.additional_data or {}
+        additional_data['ai_model'] = selected_model
+        conversation.additional_data = additional_data
+        conversation.save()
         
         if not message_content:
             return JsonResponse({'error': 'Le contenu du message est requis'}, status=400)
@@ -47,19 +118,28 @@ def send_message(request, conversation_id):
             content=message_content
         )
         
-        # TODO: This is where you'll integrate your AI department
-        # For now, we're just sending back a simple echo
-        ai_response = f"Echo: {message_content}"
+        # Generate response based on selected model
+        if selected_model == 'mistral':
+            from .mistral_client import MistralClient
+            client = MistralClient()
+            ai_response = client.generate_response(f"""
+            Tu es ThiCodeAI, un assistant de développement web.
+            L'utilisateur te demande: {message_content}
+            Réponds de manière claire et utile.
+            """)
+        else:
+            # Fallback if the model is not recognized
+            ai_response = "Je ne peux pas utiliser ce modèle pour le moment. Veuillez choisir Mistral."
         
-        # Save the AI response
+        # Save answer
         ai_message = Message.objects.create(
             conversation=conversation,
             role='assistant',
             content=ai_response
         )
         
-        # Update conversation timestamp
-        conversation.save()  # This triggers the update of updated_at
+        # Update timestamp
+        conversation.save()
         
         return JsonResponse({
             'user_message': {
