@@ -4,85 +4,62 @@
 {% block title %}{{ conversation.title|default:"Nouvelle conversation" }} - ThiCodeAI{% endblock %}
 
 {% block content %}
-<div class="h-screen flex flex-col">
-    <div class="flex-1 flex overflow-hidden">
-        <!-- Sidebar with conversation list -->
-        <div class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 hidden md:block">
-            <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Conversations</h2>
-                <a href="{% url 'chat:new' %}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-                    title="Nouvelle conversation">
-                    +
-                </a>
-            </div>
-            <nav class="mt-2 flex-1 px-2 bg-white dark:bg-gray-800 space-y-1 overflow-y-auto">
-                {% for conv in request.user.conversations.all %}
-                <a href="{% url 'chat:conversation_detail' conv.id %}"
-                    class="{% if conv.id == conversation.id %}bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white{% else %}text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white{% endif %} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-                    {{ conv.title|default:"Nouvelle conversation"|truncatechars:20 }}
-                </a>
-                {% endfor %}
-            </nav>
+<div class="h-full flex flex-col">
+    <!-- Chat header -->
+    <div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {{ conversation.title|default:"Nouvelle conversation" }}
+            </h1>
         </div>
+        <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <span>Modèle: </span>
+            <select id="model-selector" class="ml-2 bg-transparent dark:bg-transparent border-none focus:ring-0 dark:text-gray-300">
+                <option value="mistral" {% if conversation.additional_data.ai_model == 'mistral' %}selected{% endif %}>Mistral</option>
+            </select>
+        </div>
+        <div>
+            <button id="rename-button" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mr-2">
+                Renommer
+            </button>
+            <a href="{% url 'chat:delete_conversation' conversation.id %}"
+                class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                Supprimer
+            </a>
+        </div>
+    </div>
 
-        <!-- Main chat area -->
-        <div class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
-            <!-- Chat header -->
-            <div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                        {{ conversation.title|default:"Nouvelle conversation" }}
-                    </h1>
+    <!-- Message list -->
+    <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+        {% for message in messages %}
+        <div class="flex {% if message.role == 'user' %}justify-end{% endif %}">
+            <div
+                class="max-w-xl {% if message.role == 'user' %}bg-indigo-50 dark:bg-indigo-900{% else %}bg-white dark:bg-gray-800{% endif %} rounded-lg p-4 shadow-sm">
+                <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                    {{ message.get_role_display }}
                 </div>
-                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                    <span>Modèle: </span>
-                    <select id="model-selector" class="ml-2 bg-transparent dark:bg-transparent border-none focus:ring-0 dark:text-gray-300">
-                        <option value="mistral" {% if conversation.additional_data.ai_model == 'mistral' %}selected{% endif %}>Mistral</option>
-                    </select>
+                <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                    {{ message.content }}
                 </div>
-                <div>
-                    <button id="rename-button" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mr-2">
-                        Renommer
-                    </button>
-                    <a href="{% url 'chat:delete_conversation' conversation.id %}"
-                        class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                        Supprimer
-                    </a>
-                </div>
-            </div>
-
-            <!-- Message list -->
-            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
-                {% for message in messages %}
-                <div class="flex {% if message.role == 'user' %}justify-end{% endif %}">
-                    <div
-                        class="max-w-xl {% if message.role == 'user' %}bg-indigo-50 dark:bg-indigo-900{% else %}bg-white dark:bg-gray-800{% endif %} rounded-lg p-4 shadow-sm">
-                        <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                            {{ message.get_role_display }}
-                        </div>
-                        <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                            {{ message.content }}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Message input -->
-            <div class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-                <form id="message-form" class="flex items-center">
-                    <textarea id="message-input"
-                        class="form-input flex-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                        placeholder="Tape ton message ici..." rows="2"></textarea>
-                    <button type="submit" class="ml-4 btn-primary">
-                        Envoyer
-                    </button>
-                </form>
             </div>
         </div>
+        {% endfor %}
+    </div>
+
+    <!-- Message input -->
+    <div class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+        <form id="message-form" class="flex items-center">
+            <textarea id="message-input"
+                class="form-input flex-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                placeholder="Tape ton message ici..." rows="2"></textarea>
+            <button type="submit" class="ml-4 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                Envoyer
+            </button>
+        </form>
     </div>
 </div>
 
+{% block extra_scripts %}
 <script>
     // Simple script to manage message delivery
     document.addEventListener('DOMContentLoaded', function () {
@@ -183,4 +160,5 @@
         });
     });
 </script>
+{% endblock %}
 {% endblock %}

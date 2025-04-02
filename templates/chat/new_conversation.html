@@ -5,29 +5,31 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto mt-8">
-    <h1 class="text-2xl font-semibold mb-6 text-center">Démarrer une nouvelle conversation</h1>
+    <h1 class="text-2xl font-semibold mb-6 text-center text-gray-900 dark:text-white">Démarrer une nouvelle conversation</h1>
     
-    <div class="bg-white rounded-lg shadow-sm p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <form id="first-message-form" method="post" action="{% url 'chat:create_conversation' %}">
             {% csrf_token %}
             
             <div class="mb-6">
-                <label for="ai-model" class="block text-sm font-medium text-gray-700 mb-2">Modèle d'IA</label>
-                <select id="ai-model" name="ai_model" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200">
+                <label for="ai-model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Modèle d'IA</label>
+                <select id="ai-model" name="ai_model" class="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-700 dark:text-white">
                     <option value="mistral">Mistral</option>
                 </select>
-                <p class="mt-1 text-sm text-gray-500">Le modèle que vous souhaitez utiliser pour cette conversation.</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Le modèle que vous souhaitez utiliser pour cette conversation.</p>
             </div>
             
             <div class="mb-6">
-                <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Votre message</label>
+                <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Votre message</label>
                 <textarea id="message" name="message" rows="4" required
-                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200"
+                    class="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
                     placeholder="En quoi puis-je vous aider aujourd'hui ?"></textarea>
             </div>
             
             <div class="flex justify-end">
-                <button type="submit" class="btn-primary">Commencer la conversation</button>
+                <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                    Commencer la conversation
+                </button>
             </div>
         </form>
     </div>

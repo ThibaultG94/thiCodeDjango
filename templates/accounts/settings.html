@@ -3,13 +3,13 @@
 {% block title %}Paramètres - ThiCodeAI{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto mt-8 card p-6">
-    <h1 class="text-2xl font-semibold mb-6">Paramètres utilisateur</h1>
+<div class="max-w-2xl mx-auto mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+    <h1 class="text-2xl font-semibold mb-6 text-gray-900 dark:text-white">Paramètres utilisateur</h1>
     
     {% if messages %}
     <div class="mb-4">
         {% for message in messages %}
-        <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %} rounded-md">
+        <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-100{% else %}bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-100{% endif %} rounded-md">
             {{ message }}
         </div>
         {% endfor %}
@@ -20,16 +20,112 @@
         {% csrf_token %}
         
         <div class="mb-6">
-            <h2 class="text-lg font-medium mb-2">Préférences d'interface</h2>
-            <p class="text-gray-600 mb-4">Personnalisez votre expérience avec ThiCodeAI.</p>
+            <h2 class="text-lg font-medium mb-2 text-gray-800 dark:text-gray-200">Préférences d'interface</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">Personnalisez votre expérience avec ThiCodeAI.</p>
             
-            <!-- Other parameters you'd like to add -->
+            <!-- IA model preference -->
+            <div class="mb-4">
+                <label for="ai_model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Modèle d'IA par défaut</label>
+                <select id="ai_model" name="ai_model" class="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-700 dark:text-white">
+                    {% for model in available_models %}
+                    <option value="{{ model.id }}" {% if model.id == current_model %}selected{% endif %}>{{ model.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ce modèle sera utilisé par défaut pour toutes vos nouvelles conversations.</p>
+            </div>
             
+            <!-- Theme preference -->
+            <div class="mb-4">
+                <label for="theme" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Thème</label>
+                <div class="flex items-center space-x-4">
+                    <button type="button" id="theme-light" class="p-2 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>Clair</span>
+                    </button>
+                    <button type="button" id="theme-dark" class="p-2 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        <span>Sombre</span>
+                    </button>
+                    <button type="button" id="theme-system" class="p-2 rounded-md bg-gray-100 dark:bg-gray-700 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span>Système</span>
+                    </button>
+                </div>
+                <input type="hidden" id="theme_preference" name="theme_preference" value="">
+            </div>
         </div>
         
         <div class="flex justify-end">
-            <button type="submit" class="btn-primary">Enregistrer les préférences</button>
+            <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                Enregistrer les préférences
+            </button>
         </div>
     </form>
 </div>
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const themeLight = document.getElementById('theme-light');
+        const themeDark = document.getElementById('theme-dark');
+        const themeSystem = document.getElementById('theme-system');
+        const themePreference = document.getElementById('theme_preference');
+        
+        // Determine the current theme
+        const currentTheme = localStorage.getItem('darkMode');
+        if (currentTheme === 'true') {
+            themeDark.classList.add('ring-2', 'ring-indigo-500');
+            themePreference.value = 'dark';
+        } else if (currentTheme === 'false') {
+            themeLight.classList.add('ring-2', 'ring-indigo-500');
+            themePreference.value = 'light';
+        } else {
+            themeSystem.classList.add('ring-2', 'ring-indigo-500');
+            themePreference.value = 'system';
+        }
+        
+        // Event handlers for theme buttons
+        themeLight.addEventListener('click', function() {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('darkMode', 'false');
+            themePreference.value = 'light';
+            
+            themeLight.classList.add('ring-2', 'ring-indigo-500');
+            themeDark.classList.remove('ring-2', 'ring-indigo-500');
+            themeSystem.classList.remove('ring-2', 'ring-indigo-500');
+        });
+        
+        themeDark.addEventListener('click', function() {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('darkMode', 'true');
+            themePreference.value = 'dark';
+            
+            themeDark.classList.add('ring-2', 'ring-indigo-500');
+            themeLight.classList.remove('ring-2', 'ring-indigo-500');
+            themeSystem.classList.remove('ring-2', 'ring-indigo-500');
+        });
+        
+        themeSystem.addEventListener('click', function() {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (prefersDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            localStorage.removeItem('darkMode');
+            themePreference.value = 'system';
+            
+            themeSystem.classList.add('ring-2', 'ring-indigo-500');
+            themeLight.classList.remove('ring-2', 'ring-indigo-500');
+            themeDark.classList.remove('ring-2', 'ring-indigo-500');
+        });
+    });
+</script>
+{% endblock %}
 {% endblock %}
