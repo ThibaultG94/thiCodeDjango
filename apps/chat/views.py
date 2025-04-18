@@ -6,6 +6,12 @@ from .models import Conversation, Message
 from django.views.decorators.http import require_POST
 import json
 
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .serializers import ConversationSerializer, MessageSerializer
+from .models import Conversation, Message
+
 @login_required
 def conversation_list(request):
     """Vue pour lister toutes les conversations de l'utilisateur courant"""
@@ -171,3 +177,67 @@ def delete_conversation(request, conversation_id):
     return render(request, 'chat/delete_confirmation.html', {
         'conversation': conversation
     })
+
+class ConversationViewSet(viewsets.ModelViewSet):
+    serializer_class = ConversationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Conversation.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+        
+    @action(detail=True, methods=['post'])
+    def messages(self, request, pk=None):
+        """Ajouter un message à la conversation"""
+        conversation = self.get_object()
+        
+        # Check required data
+        if 'message' not in request.data:
+            return Response(
+                {'error': 'Message content is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create user message
+        user_message = Message.objects.create(
+            conversation=conversation,
+            role='user',
+            content=request.data['message']
+        )
+        
+        # Generate AI response
+        model = request.data.get('model', 'mistral')
+        
+        try:
+            # Reuse existing Mistral client
+            from .mistral_client import MistralClient
+            client = MistralClient()
+            
+            ai_response = client.generate_response(f"""
+            Tu es ThiCodeAI, un assistant de développement web.
+            L'utilisateur te demande: {request.data['message']}
+            Réponds de manière claire et utile.
+            """)
+            
+            # Create wizard message
+            ai_message = Message.objects.create(
+                conversation=conversation,
+                role='assistant',
+                content=ai_response
+            )
+            
+            # Update conversation timestamp
+            conversation.save()
+            
+            return Response({
+                'user_message': MessageSerializer(user_message).data,
+                'ai_message': MessageSerializer(ai_message).data
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

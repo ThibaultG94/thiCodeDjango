@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThiCodeAI</title>
+    <!-- Insérer les liens CSS générés par Vite -->
+    {% if debug %}
+    <!-- Dev mode - utiliser le serveur de développement Vite -->
+    <script type="module">
+        import RefreshRuntime from 'http://localhost:5173/@react-refresh'
+        RefreshRuntime.injectIntoGlobalHook(window)
+        window.$RefreshReg$ = () => {}
+        window.$RefreshSig$ = () => (type) => type
+        window.__vite_plugin_react_preamble_installed__ = true
+    </script>
+    <script type="module" src="http://localhost:5173/@vite/client"></script>
+    <script type="module" src="http://localhost:5173/src/main.jsx"></script>
+    {% else %}
+    <!-- Production mode - utiliser les fichiers buildés -->
+    <link rel="stylesheet" href="{% static 'react/assets/index-[hash].css' %}">
+    {% endif %}
+</head>
+<body>
+    <div id="root"></div>
+    
+    {% if not debug %}
+    <!-- Scripts Vite en production -->
+    <script type="module" src="{% static 'react/assets/index-[hash].js' %}"></script>
+    {% endif %}
+</body>
+</html>

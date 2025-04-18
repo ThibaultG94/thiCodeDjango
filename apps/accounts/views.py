@@ -3,10 +3,17 @@ from django.views.generic import CreateView
 from django.urls import reverse_lazy
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 
 from .models import User
 from .forms import SignUpForm
+
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from .serializers import UserSerializer
 
 class SignUpView(CreateView):
     model = User
@@ -37,3 +44,63 @@ def user_settings(request):
         'available_models': available_models,
         'current_model': request.user.ai_model
     })
+
+@api_view(['GET'])
+def current_user(request):
+    """Endpoint pour récupérer l'utilisateur connecté"""
+    if request.user.is_authenticated:
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+    return Response({'detail': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def update_preferences(request):
+    """Endpoint pour mettre à jour les préférences utilisateur"""
+    user = request.user
+    if 'preferences' in request.data:
+        user.preferences = request.data['preferences']
+        user.save()
+        return Response(UserSerializer(user).data)
+    return Response({'error': 'No preferences provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def api_login(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    user = authenticate(username=username, password=password)
+    if user:
+        login(request, user)
+        return Response({
+            'user': UserSerializer(user).data,
+            'message': 'Connexion réussie'
+        })
+    return Response(
+        {'message': 'Nom d\'utilisateur ou mot de passe incorrect'}, 
+        status=status.HTTP_401_UNAUTHORIZED
+    )
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def api_register(request):
+    from .forms import SignUpForm
+    
+    form = SignUpForm(request.data)
+    if form.is_valid():
+        user = form.save()
+        login(request, user)
+        return Response({
+            'user': UserSerializer(user).data,
+            'message': 'Inscription réussie'
+        })
+    return Response(
+        {'errors': form.errors}, 
+        status=status.HTTP_400_BAD_REQUEST
+    )
+
+@api_view(['POST'])
+def api_logout(request):
+    logout(request)
+    return Response({'message': 'Déconnexion réussie'})
