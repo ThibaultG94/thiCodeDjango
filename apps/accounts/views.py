@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 
 from .models import User
 from .forms import SignUpForm
@@ -46,6 +48,7 @@ def user_settings(request):
     })
 
 @api_view(['GET'])
+@ensure_csrf_cookie
 def current_user(request):
     """Endpoint pour récupérer l'utilisateur connecté"""
     if request.user.is_authenticated:
@@ -66,6 +69,8 @@ def update_preferences(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
+@ensure_csrf_cookie
 def api_login(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -84,6 +89,7 @@ def api_login(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@ensure_csrf_cookie
 def api_register(request):
     from .forms import SignUpForm
     
@@ -101,6 +107,7 @@ def api_register(request):
     )
 
 @api_view(['POST'])
+@ensure_csrf_cookie
 def api_logout(request):
     logout(request)
     return Response({'message': 'Déconnexion réussie'})

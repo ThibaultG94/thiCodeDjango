@@ -21,8 +21,14 @@ from apps.core.views import get_csrf_token, home
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('apps.accounts.urls')),
-    path('chat/', include('apps.chat.urls')), 
-    path('', include('apps.core.urls')),
+    
+    # API endpoints for the React frontend
+    path('api/accounts/', include('apps.accounts.urls', namespace='api_accounts')),
+    path('api/chat/', include('apps.chat.urls', namespace='api_chat')),
     path('api/csrf/', get_csrf_token, name='csrf_token'),
+    
+    # Traditional frontend routes (Django templates)
+    path('accounts/', include('apps.accounts.urls', namespace='accounts')),
+    path('chat/', include('apps.chat.urls', namespace='chat')), 
+    path('', include('apps.core.urls')),
 ]
