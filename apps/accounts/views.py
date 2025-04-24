@@ -1,12 +1,16 @@
 from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login, logout, password_validation
+from django.contrib import messages
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.views.generic import CreateView
 from django.urls import reverse_lazy
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str as force_text
 
 from .models import User
 from .forms import SignUpForm
@@ -111,3 +115,118 @@ def api_register(request):
 def api_logout(request):
     logout(request)
     return Response({'message': 'Déconnexion réussie'})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_password_reset(request):
+    """Endpoint to request a password reset"""
+    email = request.data.get('email')
+    
+    if not email:
+        return Response({'error': 'Email obligatoire'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # User search by email
+    try:
+        user = User.objects.get(email=email)
+        
+        # Generate a unique token
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        # Building the reset URL
+        reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}-{token}"
+        
+        # Send email
+        subject = "Réinitialisation de votre mot de passe ThiCodeAI"
+        message = f"""
+        Bonjour {user.username},
+        
+        Vous avez demandé la réinitialisation de votre mot de passe sur ThiCodeAI.
+        
+        Cliquez sur le lien suivant pour définir un nouveau mot de passe :
+        {reset_url}
+        
+        Ce lien est valable pendant 24 heures.
+        
+        Si vous n'avez pas demandé cette réinitialisation, ignorez simplement cet email.
+        
+        L'équipe ThiCodeAI
+        """
+        
+        user.email_user(subject, message)
+        
+    except User.DoesNotExist:
+        # Do not inform the user that the email does not exist (security)
+        pass
+    
+    # Always return a success, even if the email doesn't exist
+    return Response({'message': 'Si votre email est associé à un compte, vous recevrez un lien de réinitialisation'})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_reset_token(request, token):
+    """Checks the validity of a reset token"""
+    try:
+        # Uid and token extraction
+        parts = token.split('-', 1)
+        if len(parts) != 2:
+            return Response({'valid': False}, status=status.HTTP_400_BAD_REQUEST)
+        
+        uid, token = parts
+        
+        # uid decoding
+        user_id = force_text(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+        
+        # Token verification
+        if default_token_generator.check_token(user, token):
+            return Response({'valid': True})
+        else:
+            return Response({'valid': False})
+            
+    except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+        return Response({'valid': False})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def confirm_password_reset(request):
+    """Confirme la réinitialisation du mot de passe"""
+    token = request.data.get('token')
+    password = request.data.get('password')
+    
+    if not token or not password:
+        return Response(
+            {'error': 'Token et mot de passe obligatoires'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Uid and token extraction
+        parts = token.split('-', 1)
+        if len(parts) != 2:
+            return Response({'error': 'Token invalide'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        uid, token = parts
+        
+        # uid decoding
+        user_id = force_text(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id)
+        
+        # Token validation
+        if not default_token_generator.check_token(user, token):
+            return Response({'error': 'Token invalide ou expiré'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Password validation
+        try:
+            password_validation.validate_password(password, user)
+        except ValidationError as e:
+            return Response({'error': e.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Password update
+        user.set_password(password)
+        user.save()
+        
+        return Response({'message': 'Mot de passe modifié avec succès'})
+        
+    except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+        return Response({'error': 'Token invalide'}, status=status.HTTP_400_BAD_REQUEST)

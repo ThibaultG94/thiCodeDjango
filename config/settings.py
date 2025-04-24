@@ -18,6 +18,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 import sys
 sys.path.append(str(BASE_DIR))
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -179,3 +184,13 @@ CSRF_TRUSTED_ORIGINS = [
 
 CSRF_COOKIE_SECURE = False  # In production, put True
 SESSION_COOKIE_SECURE = False  # In production, put True
+
+# Email sending configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Or another SMTP service
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+FRONTEND_URL = 'http://localhost:5174'  # URL of your frontend
