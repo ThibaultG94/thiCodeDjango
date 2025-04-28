@@ -1,4 +1,3 @@
-from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout, password_validation
@@ -15,12 +14,14 @@ from django.utils.encoding import force_bytes, force_str as force_text
 from .models import User
 from .forms import SignUpForm
 
-from rest_framework import viewsets, permissions, status
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from .serializers import UserSerializer
 
+from django.core.mail import send_mail
+from django.utils.html import strip_tags
 class SignUpView(CreateView):
     model = User
     form_class = SignUpForm 
@@ -136,8 +137,25 @@ def request_password_reset(request):
         # Building the reset URL
         reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}-{token}"
         
-        # Send email
+        # Email preparation
         subject = "Réinitialisation de votre mot de passe ThiCodeAI"
+        html_message = f"""
+        <h2>Réinitialisation de mot de passe</h2>
+        <p>Bonjour {user.username},</p>
+        
+        <p>Vous avez demandé la réinitialisation de votre mot de passe sur ThiCodeAI.</p>
+        
+        <p><a href="{reset_url}">Cliquez ici pour définir un nouveau mot de passe</a></p>
+        
+        <p>Ou copiez-collez ce lien dans votre navigateur :<br>
+        {reset_url}</p>
+        
+        <p>Ce lien est valable pendant 24 heures.</p>
+        
+        <p>Si vous n'avez pas demandé cette réinitialisation, ignorez simplement cet email.</p>
+        
+        <p>L'équipe ThiCodeAI</p>
+        """
         message = f"""
         Bonjour {user.username},
         
@@ -153,7 +171,18 @@ def request_password_reset(request):
         L'équipe ThiCodeAI
         """
         
-        user.email_user(subject, message)
+        # Envoi explicite via SendGrid
+        from django.core.mail import EmailMultiAlternatives
+        from django.utils.html import strip_tags
+
+        email_message = EmailMultiAlternatives(
+            subject=subject,
+            body=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[email]
+        )
+        email_message.attach_alternative(html_message, "text/html")
+        email_message.send()
         
     except User.DoesNotExist:
         # Do not inform the user that the email does not exist (security)

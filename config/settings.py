@@ -186,11 +186,19 @@ CSRF_COOKIE_SECURE = False  # In production, put True
 SESSION_COOKIE_SECURE = False  # In production, put True
 
 # Email sending configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Or another SMTP service
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+if DEBUG:
+    # Displays emails in the console during development
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # SendGrid configuration for production
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.sendgrid.net'  # SendGrid SMTP service
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+# The sender address that will appear
+DEFAULT_FROM_EMAIL = 'noreply@thicodeai.com'
 
 FRONTEND_URL = 'http://localhost:5174'  # URL of your frontend
