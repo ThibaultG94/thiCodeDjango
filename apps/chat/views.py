@@ -1,70 +1,73 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import JsonResponse
-from .models import Conversation, Message
-from django.views.decorators.http import require_POST
-import json
-
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .serializers import ConversationSerializer, MessageSerializer
 from .models import Conversation, Message
 
-@login_required
-def conversation_list(request):
-    """Vue pour lister toutes les conversations de l'utilisateur courant"""
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+import json
+
+# API to list all conversations
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def conversation_list_api(request):
     conversations = Conversation.objects.filter(user=request.user)
-    return render(request, 'chat/conversation_list.html', {'conversations': conversations})
+    serializer = ConversationSerializer(conversations, many=True)
+    return Response(serializer.data)
 
-@login_required
-def new_conversation(request):
-    """Afficher la page pour démarrer une nouvelle conversation"""
-    return render(request, 'chat/new_conversation.html')
+# API for conversation details
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def conversation_detail_api(request, conversation_id):
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
+    serializer = ConversationSerializer(conversation)
+    return Response(serializer.data)
 
-@login_required
-@require_POST
-def create_conversation(request):
-    """Créer une nouvelle conversation avec le premier message"""
-    message = request.POST.get('message', '').strip()
-    ai_model = request.POST.get('ai_model', 'mistral')
+# API for creating a new conversation with a first message
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_conversation_api(request):
+    message = request.data.get('message', '').strip()
+    ai_model = request.data.get('ai_model', 'mistral')
     
     if not message:
-        # Redirect with error message if message is empty
-        messages.error(request, "Le message ne peut pas être vide.")
-        return redirect('chat:new')
+        return Response(
+            {'error': 'Message content is required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
-    # Creating conversation
+    # Create conversation
     conversation = Conversation.objects.create(
         user=request.user,
-        title="Nouvelle Conversation"
+        title="New Conversation",
+        additional_data={'ai_model': ai_model}
     )
     
-    # Store selected model in additional data
-    conversation.additional_data = {'ai_model': ai_model}
-    conversation.save()
-    
-    # Create the first user message
+    # Create user message
     user_message = Message.objects.create(
         conversation=conversation,
         role='user',
         content=message
     )
     
-    # Get the answer from the AI
+    # Generate AI response
     try:
         from .mistral_client import MistralClient
         client = MistralClient()
         
         ai_response = client.generate_response(f"""
-        Tu es ThiCodeAI, un assistant de développement web.
-        L'utilisateur te demande: {message}
-        Réponds de manière claire et utile.
+        You are ThiCodeAI, a web development assistant.
+        User asks: {message}
+        Respond clearly and helpfully.
         """)
         
-        # Create the AI message
-        Message.objects.create(
+        # Create AI message
+        ai_message = Message.objects.create(
             conversation=conversation,
             role='assistant',
             content=ai_response
@@ -77,110 +80,93 @@ def create_conversation(request):
             conversation.title = message
         conversation.save()
         
+        # Return the complete conversation with messages
+        serializer = ConversationSerializer(conversation)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
     except Exception as e:
-        # Create an error message if the AI call fails
+        # Create error message if AI call fails
         Message.objects.create(
             conversation=conversation,
             role='system',
-            content=f"Erreur lors de la génération de la réponse: {str(e)}"
+            content=f"Error generating response: {str(e)}"
+        )
+        
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+# API for sending a message in an existing conversation
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_message_api(request, conversation_id):
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
+    
+    message_content = request.data.get('message')
+    selected_model = request.data.get('model', 'mistral')
+    
+    if not message_content:
+        return Response(
+            {'error': 'Message content is required'},
+            status=status.HTTP_400_BAD_REQUEST
         )
     
-    return redirect('chat:conversation_detail', conversation_id=conversation.id)
-
-@login_required
-def conversation_detail(request, conversation_id):
-    """Voir une conversation spécifique"""
-    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
-    messages = conversation.messages.all()
-    return render(request, 'chat/conversation_detail.html', {
-        'conversation': conversation,
-        'messages': messages
-    })
-
-@login_required
-@require_POST
-def send_message(request, conversation_id):
-    """Endpoint API pour envoyer un nouveau message"""
-    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
+    # Save user message
+    user_message = Message.objects.create(
+        conversation=conversation,
+        role='user',
+        content=message_content
+    )
     
+    # Generate AI response
     try:
-        data = json.loads(request.body)
-        message_content = data.get('message')
-        selected_model = data.get('model', 'mistral')  # Retrieve the selected model
-        
-        # Update the template used for this conversation
+        # Update model preference for this conversation
         additional_data = conversation.additional_data or {}
         additional_data['ai_model'] = selected_model
         conversation.additional_data = additional_data
         conversation.save()
         
-        if not message_content:
-            return JsonResponse({'error': 'Le contenu du message est requis'}, status=400)
+        # Generate response with selected model
+        from .mistral_client import MistralClient
+        client = MistralClient()
         
-        # Save user message
-        user_message = Message.objects.create(
-            conversation=conversation,
-            role='user',
-            content=message_content
-        )
+        ai_response = client.generate_response(f"""
+        You are ThiCodeAI, a web development assistant.
+        User asks: {message_content}
+        Respond clearly and helpfully.
+        """)
         
-        # Generate response based on selected model
-        if selected_model == 'mistral':
-            from .mistral_client import MistralClient
-            client = MistralClient()
-            ai_response = client.generate_response(f"""
-            Tu es ThiCodeAI, un assistant de développement web.
-            L'utilisateur te demande: {message_content}
-            Réponds de manière claire et utile.
-            """)
-        else:
-            # Fallback if the model is not recognized
-            ai_response = "Je ne peux pas utiliser ce modèle pour le moment. Veuillez choisir Mistral."
-        
-        # Save answer
+        # Save AI message
         ai_message = Message.objects.create(
             conversation=conversation,
             role='assistant',
             content=ai_response
         )
         
-        # Update timestamp
-        conversation.save()
-        
-        return JsonResponse({
-            'user_message': {
-                'id': user_message.id,
-                'content': user_message.content,
-                'created_at': user_message.created_at.isoformat()
-            },
-            'ai_message': {
-                'id': ai_message.id,
-                'content': ai_message.content,
-                'created_at': ai_message.created_at.isoformat()
-            }
+        # Return both messages
+        return Response({
+            'user_message': MessageSerializer(user_message).data,
+            'ai_message': MessageSerializer(ai_message).data
         })
         
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON invalide'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-    
-@login_required
-def delete_conversation(request, conversation_id):
-    """Supprimer une conversation spécifique"""
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+# API for deleting a conversation
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_conversation_api(request, conversation_id):
     conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
-    
-    if request.method == 'POST':
-        conversation.delete()
-        return redirect('chat:conversation_list')
-    
-    return render(request, 'chat/delete_confirmation.html', {
-        'conversation': conversation
-    })
+    conversation.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         return Conversation.objects.filter(user=self.request.user)
@@ -216,12 +202,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
             client = MistralClient()
             
             ai_response = client.generate_response(f"""
-            Tu es ThiCodeAI, un assistant de développement web.
-            L'utilisateur te demande: {request.data['message']}
-            Réponds de manière claire et utile.
+            You are ThiCodeAI, a web development assistant.
+            User asks: {request.data['message']}
+            Respond clearly and helpfully.
             """)
             
-            # Create wizard message
+            # Create AI message
             ai_message = Message.objects.create(
                 conversation=conversation,
                 role='assistant',
