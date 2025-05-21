@@ -1,0 +1,347 @@
+openapi: 3.0.3
+info:
+  title: ThiCodeAI API
+  description: API pour la gestion des conversations et messages d'IA
+  version: 1.0.0
+  
+servers:
+  - url: /api
+    description: API Server
+
+components:
+  schemas:
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: ID de l'utilisateur propriétaire
+        title:
+          type: string
+          description: Titre de la conversation
+        slug:
+          type: string
+          readOnly: true
+        summary:
+          type: string
+          description: Résumé automatique de la conversation
+        category:
+          type: string
+          description: Catégorie de la conversation
+        tags:
+          type: array
+          items:
+            type: string
+          description: Liste des tags associés
+        status:
+          type: string
+          enum: [active, archived, deleted]
+          description: État de la conversation
+        is_pinned:
+          type: boolean
+          description: Si la conversation est épinglée
+        message_count:
+          type: integer
+          readOnly: true
+        last_message_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+    
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        conversation:
+          type: integer
+          description: ID de la conversation parente
+        parent:
+          type: integer
+          nullable: true
+          description: ID du message parent (pour les fils de discussion)
+        role:
+          type: string
+          enum: [user, assistant, system]
+          description: Rôle de l'émetteur du message
+        content:
+          type: string
+          description: Contenu du message
+        content_type:
+          type: string
+          default: text
+          description: Type de contenu (text, code, markdown...)
+        status:
+          type: string
+          enum: [pending, sent, delivered, error]
+          description: État du message
+        is_edited:
+          type: boolean
+          readOnly: true
+        edit_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        delivered_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Métadonnées techniques (tokens, temps de réponse...)
+
+paths:
+  /conversations/:
+    get:
+      summary: Liste des conversations
+      description: Récupère la liste des conversations de l'utilisateur avec filtrage et recherche
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived, deleted]
+          description: Filtre par statut
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filtre par catégorie
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Recherche dans le titre, résumé et contenu
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            enum: [created_at, -created_at, updated_at, -updated_at, last_message_at, -last_message_at]
+          description: Tri des résultats
+      responses:
+        '200':
+          description: Liste des conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+    
+    post:
+      summary: Créer une conversation
+      description: Crée une nouvelle conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Conversation créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+  
+  /conversations/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      summary: Détails d'une conversation
+      description: Récupère les détails d'une conversation spécifique
+      responses:
+        '200':
+          description: Détails de la conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+    
+    patch:
+      summary: Mettre à jour une conversation
+      description: Met à jour partiellement une conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Conversation mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+    
+    delete:
+      summary: Supprimer une conversation
+      description: Supprime définitivement une conversation
+      responses:
+        '204':
+          description: Conversation supprimée
+  
+  /conversations/{id}/messages/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      summary: Ajouter un message
+      description: Ajoute un message à la conversation et génère une réponse IA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: Contenu du message
+                content_type:
+                  type: string
+                  default: text
+                  description: Type de contenu
+                parent_id:
+                  type: integer
+                  description: ID du message parent pour les réponses
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: Horodatage côté client
+      responses:
+        '200':
+          description: Messages créés (utilisateur + IA)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_message:
+                    $ref: '#/components/schemas/Message'
+                  ai_message:
+                    $ref: '#/components/schemas/Message'
+  
+  /conversations/{id}/archive/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      summary: Archiver une conversation
+      description: Change le statut d'une conversation à "archived"
+      responses:
+        '204':
+          description: Conversation archivée
+  
+  /conversations/{id}/restore/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      summary: Restaurer une conversation
+      description: Restaure une conversation archivée à "active"
+      responses:
+        '204':
+          description: Conversation restaurée
+  
+  /conversations/{id}/update_metadata/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    post:
+      summary: Mettre à jour les métadonnées
+      description: Met à jour les métadonnées d'une conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                is_pinned:
+                  type: boolean
+      responses:
+        '200':
+          description: Métadonnées mises à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'

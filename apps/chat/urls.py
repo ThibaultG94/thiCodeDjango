@@ -8,21 +8,18 @@ app_name = 'chat'
 router = DefaultRouter()
 router.register(r'conversations', views.ConversationViewSet, basename='conversation')
 
-# API routes
+# Les URLs sont gérées automatiquement par le routeur DRF
+# Le ViewSet expose les endpoints suivants :
+# - GET /api/conversations/ : Liste des conversations
+# - POST /api/conversations/ : Créer une conversation
+# - GET /api/conversations/{id}/ : Détails d'une conversation
+# - PUT/PATCH /api/conversations/{id}/ : Mettre à jour une conversation
+# - DELETE /api/conversations/{id}/ : Supprimer une conversation
+# - POST /api/conversations/{id}/messages/ : Ajouter un message
+# - POST /api/conversations/{id}/archive/ : Archiver une conversation
+# - POST /api/conversations/{id}/restore/ : Restaurer une conversation
+# - POST /api/conversations/{id}/update_metadata/ : Mettre à jour les métadonnées
+
 urlpatterns = [
-    # Main conversation routes
-    path('api/conversations/', views.conversation_list_api, name='conversation_list_api'),
-    path('api/conversations/<int:conversation_id>/', views.conversation_detail_api, name='conversation_detail_api'),
-    
-    # How to create a new conversation with a first message
-    path('api/conversations/create/', views.create_conversation_api, name='create_conversation_api'),
-    
-    # Route to send a message in an existing conversation
-    path('api/conversations/<int:conversation_id>/messages/', views.send_message_api, name='send_message_api'),
-    
-    # Route to delete a conversation
-    path('api/conversations/<int:conversation_id>/delete/', views.delete_conversation_api, name='delete_conversation_api'),
-    
-    # Include DRF router for other standard REST operations
     path('api/', include(router.urls)),
 ]

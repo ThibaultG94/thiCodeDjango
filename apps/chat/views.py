@@ -2,228 +2,188 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .serializers import ConversationSerializer, MessageSerializer
-from .models import Conversation, Message
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-import json
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
-# API to list all conversations
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def conversation_list_api(request):
-    conversations = Conversation.objects.filter(user=request.user)
-    serializer = ConversationSerializer(conversations, many=True)
-    return Response(serializer.data)
-
-# API for conversation details
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def conversation_detail_api(request, conversation_id):
-    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
-    serializer = ConversationSerializer(conversation)
-    return Response(serializer.data)
-
-# API for creating a new conversation with a first message
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_conversation_api(request):
-    message = request.data.get('message', '').strip()
-    ai_model = request.data.get('ai_model', 'mistral')
-    
-    if not message:
-        return Response(
-            {'error': 'Message content is required'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Create conversation
-    conversation = Conversation.objects.create(
-        user=request.user,
-        title="New Conversation",
-        additional_data={'ai_model': ai_model}
-    )
-    
-    # Create user message
-    user_message = Message.objects.create(
-        conversation=conversation,
-        role='user',
-        content=message
-    )
-    
-    # Generate AI response
-    try:
-        from .mistral_client import MistralClient
-        client = MistralClient()
-        
-        ai_response = client.generate_response(f"""
-        You are ThiCodeAI, a web development assistant.
-        User asks: {message}
-        Respond clearly and helpfully.
-        """)
-        
-        # Create AI message
-        ai_message = Message.objects.create(
-            conversation=conversation,
-            role='assistant',
-            content=ai_response
-        )
-        
-        # Update conversation title based on first message
-        if len(message) > 50:
-            conversation.title = message[:47] + "..."
-        else:
-            conversation.title = message
-        conversation.save()
-        
-        # Return the complete conversation with messages
-        serializer = ConversationSerializer(conversation)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-    except Exception as e:
-        # Create error message if AI call fails
-        Message.objects.create(
-            conversation=conversation,
-            role='system',
-            content=f"Error generating response: {str(e)}"
-        )
-        
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-# API for sending a message in an existing conversation
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def send_message_api(request, conversation_id):
-    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
-    
-    message_content = request.data.get('message')
-    selected_model = request.data.get('model', 'mistral')
-    
-    if not message_content:
-        return Response(
-            {'error': 'Message content is required'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Save user message
-    user_message = Message.objects.create(
-        conversation=conversation,
-        role='user',
-        content=message_content
-    )
-    
-    # Generate AI response
-    try:
-        # Update model preference for this conversation
-        additional_data = conversation.additional_data or {}
-        additional_data['ai_model'] = selected_model
-        conversation.additional_data = additional_data
-        conversation.save()
-        
-        # Generate response with selected model
-        from .mistral_client import MistralClient
-        client = MistralClient()
-        
-        ai_response = client.generate_response(f"""
-        You are ThiCodeAI, a web development assistant.
-        User asks: {message_content}
-        Respond clearly and helpfully.
-        """)
-        
-        # Save AI message
-        ai_message = Message.objects.create(
-            conversation=conversation,
-            role='assistant',
-            content=ai_response
-        )
-        
-        # Return both messages
-        return Response({
-            'user_message': MessageSerializer(user_message).data,
-            'ai_message': MessageSerializer(ai_message).data
-        })
-        
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-# API for deleting a conversation
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_conversation_api(request, conversation_id):
-    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
-    conversation.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+from .models import Conversation
+from .serializers import ConversationSerializer, MessageSerializer
+from .services import ConversationService, MessageService
+from .exceptions import (
+    ChatBaseException,
+    InvalidConversationStateError,
+    MessageOrderingError,
+    OrphanedMessageError,
+    ConversationConflictError,
+    AIServiceError
+)
 
 class ConversationViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing conversations with error handling"""
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
     
-    def get_queryset(self):
-        return Conversation.objects.filter(user=self.request.user)
-    
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-        
-    @action(detail=True, methods=['post'])
-    def messages(self, request, pk=None):
-        """Ajouter un message à la conversation"""
-        conversation = self.get_object()
-        
-        # Check required data
-        if 'message' not in request.data:
+    def handle_exception(self, exc):
+        """Custom exception handling for chat-specific errors"""
+        if isinstance(exc, ChatBaseException):
             return Response(
-                {'error': 'Message content is required'},
+                {'error': str(exc)},
+                status=exc.status_code
+            )
+        elif isinstance(exc, ValidationError):
+            return Response(
+                {'error': str(exc)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        return super().handle_exception(exc)
+
+    def get_queryset(self):
+        status = self.request.query_params.get('status', 'active')
+        category = self.request.query_params.get('category')
+        search = self.request.query_params.get('search')
         
-        # Create user message
-        user_message = Message.objects.create(
-            conversation=conversation,
-            role='user',
-            content=request.data['message']
+        return ConversationService.get_user_conversations(
+            user=self.request.user,
+            status=status,
+            category=category,
+            search_query=search
         )
-        
-        # Generate AI response
-        model = request.data.get('model', 'mistral')
+    
+    def create(self, request, *args, **kwargs):
+        """Create a new conversation with error handling"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
         try:
-            # Reuse existing Mistral client
-            from .mistral_client import MistralClient
-            client = MistralClient()
-            
-            ai_response = client.generate_response(f"""
-            You are ThiCodeAI, a web development assistant.
-            User asks: {request.data['message']}
-            Respond clearly and helpfully.
-            """)
-            
-            # Create AI message
-            ai_message = Message.objects.create(
-                conversation=conversation,
-                role='assistant',
-                content=ai_response
-            )
-            
-            # Update conversation timestamp
-            conversation.save()
-            
-            return Response({
-                'user_message': MessageSerializer(user_message).data,
-                'ai_message': MessageSerializer(ai_message).data
-            })
-            
+            with transaction.atomic():
+                conversation = ConversationService.create_conversation(
+                    user=request.user,
+                    title=serializer.validated_data.get('title'),
+                    category=serializer.validated_data.get('category'),
+                    tags=serializer.validated_data.get('tags', [])
+                )
+                
+                return Response(
+                    self.get_serializer(conversation).data,
+                    status=status.HTTP_201_CREATED
+                )
         except Exception as e:
+            return self.handle_exception(e)
+    
+    @action(detail=True, methods=['post'])
+    def messages(self, request, pk=None):
+        """Add a message to the conversation with error handling"""
+        conversation = self.get_object()
+        serializer = MessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Add user message with transaction
+            with transaction.atomic():
+                user_message = ConversationService.add_message_to_conversation(
+                    conversation=conversation,
+                    content=request.data['message'],
+                    role='user',
+                    content_type=request.data.get('content_type', 'text'),
+                    metadata={'client_timestamp': request.data.get('timestamp')}
+                )
+                
+                # Generate AI response
+                try:
+                    model = request.data.get('model', 'mistral')
+                    from .mistral_client import MistralClient
+                    client = MistralClient()
+                    
+                    start_time = timezone.now()
+                    ai_response = client.generate_response(f"""
+                    You are ThiCodeAI, a web development assistant.
+                    User asks: {request.data['message']}
+                    Respond clearly and helpfully.
+                    """)
+                    response_time = (timezone.now() - start_time).total_seconds()
+                    
+                    # Create AI message using service
+                    ai_message = ConversationService.add_message_to_conversation(
+                        conversation=conversation,
+                        content=ai_response,
+                        role='assistant',
+                        parent_message=user_message,
+                        content_type='text',
+                        metadata={
+                            'model': model,
+                            'response_time': response_time
+                        }
+                    )
+                    
+                    # Update conversation title if it's the first message
+                    if conversation.messages.count() <= 2:  # User message + AI response
+                        ConversationService.update_conversation_title(conversation)
+                    
+                    return Response({
+                        'user_message': MessageSerializer(user_message).data,
+                        'ai_message': MessageSerializer(ai_message).data
+                    })
+                    
+                except AIServiceError as e:
+                    # Save user message even if AI fails
+                    return Response({
+                        'user_message': MessageSerializer(user_message).data,
+                        'error': str(e)
+                    }, status=e.status_code)
+                
+        except (InvalidConversationStateError, MessageOrderingError,
+                OrphanedMessageError) as e:
             return Response(
                 {'error': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=e.status_code
+            )
+    
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Archive a conversation with error handling"""
+        conversation = self.get_object()
+        try:
+            conversation = ConversationService.archive_conversation(conversation)
+            return Response(self.get_serializer(conversation).data)
+        except (InvalidConversationStateError, ConversationConflictError) as e:
+            return Response(
+                {'error': str(e)},
+                status=e.status_code
+            )
+    
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """Restore an archived conversation with error handling"""
+        conversation = self.get_object()
+        try:
+            conversation = ConversationService.restore_conversation(conversation)
+            return Response(self.get_serializer(conversation).data)
+        except InvalidConversationStateError as e:
+            return Response(
+                {'error': str(e)},
+                status=e.status_code
+            )
+    
+    @action(detail=True, methods=['post'])
+    def update_metadata(self, request, pk=None):
+        """Update conversation metadata with error handling"""
+        conversation = self.get_object()
+        try:
+            conversation = ConversationService.update_conversation_metadata(
+                conversation=conversation,
+                summary=request.data.get('summary'),
+                category=request.data.get('category'),
+                tags=request.data.get('tags'),
+                is_pinned=request.data.get('is_pinned')
+            )
+            return Response(self.get_serializer(conversation).data)
+        except (InvalidConversationStateError, ValidationError) as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST if isinstance(e, ValidationError)
+                else e.status_code
             )
