@@ -44,18 +44,25 @@ class Conversation(models.Model):
     def save(self, *args, **kwargs):
         # Generate slug if not defined
         if not self.slug:
-            self.slug = slugify(self.title) if self.title else f'conversation-{self.id}'
+            self.slug = slugify(self.title) if self.title else 'nouvelle-conversation'
         
-        # Update message counter
-        self.message_count = self.messages.count()
-        
-        # Update last_message_at
-        last_message = self.messages.order_by('-created_at').first()
-        if last_message:
-            self.last_message_at = last_message.created_at
+        # Only update message-related fields if the conversation already exists
+        if self.pk:
+            # Update message counter
+            self.message_count = self.messages.count()
+            
+            # Update last_message_at
+            last_message = self.messages.order_by('-created_at').first()
+            if last_message:
+                self.last_message_at = last_message.created_at
         
         self.clean()
         super().save(*args, **kwargs)
+        
+        # If this is a new conversation, update the slug with the ID
+        if not self.slug or self.slug == 'nouvelle-conversation':
+            self.slug = f'conversation-{self.pk}'
+            super().save(update_fields=['slug'])
     
     def archive(self):
         """Archive the conversation"""

@@ -6,7 +6,7 @@ app_name = 'chat'
 
 # Creating a router for the REST API
 router = DefaultRouter()
-router.register(r'conversations', views.ConversationViewSet, basename='conversation')
+router.register(r'conversations', views.ConversationViewSet, basename='conversations')
 
 # Les URLs sont gérées automatiquement par le routeur DRF
 # Le ViewSet expose les endpoints suivants :
@@ -21,5 +21,6 @@ router.register(r'conversations', views.ConversationViewSet, basename='conversat
 # - POST /api/conversations/{id}/update_metadata/ : Mettre à jour les métadonnées
 
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
+    path('ask-mistral/', views.AskMistralView.as_view(), name='ask-mistral'),
 ]

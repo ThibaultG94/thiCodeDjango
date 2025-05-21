@@ -1,4 +1,14 @@
-# thiCodeDjango Project Documentation
+# thiCodeDjango Project# Backend Project Guide
+
+## Overview
+
+The backend is built with Django and Django REST Framework. It provides a RESTful API for the chat application and integrates with Mistral AI for generating responses.
+
+### Key Features
+- User authentication and authorization
+- Conversation and message management
+- Asynchronous message processing with Mistral AI
+- Real-time message status updates
 
 ## Project Structure
 
@@ -133,15 +143,24 @@ class Message(models.Model):
 
 Represents an individual message in a conversation, with different possible roles.
 
-## REST APIs
+## API Endpoints
 
-The project provides several API endpoints to enable interaction with the frontend:
+### Authentication
+- `POST /api/auth/login/` - User login
+- `POST /api/auth/logout/` - User logout
+- `GET /api/auth/user/` - Get current user
 
-### Accounts API
+### Conversations
+- `GET /api/chat/conversations/` - List all conversations
+- `POST /api/chat/conversations/` - Create new conversation
+- `GET /api/chat/conversations/{id}/` - Get conversation details
+- `PATCH /api/chat/conversations/{id}/` - Update conversation
+- `DELETE /api/chat/conversations/{id}/` - Delete conversation
 
-- User creation
-- Authentication (login/logout)
-- Profile management
+### Messages
+- `GET /api/chat/conversations/{id}/messages/` - List conversation messages
+- `POST /api/chat/conversations/{id}/messages/` - Send new message
+- `GET /api/chat/conversations/{id}/messages/{message_id}/status/` - Check message status
 
 ### Chat API
 

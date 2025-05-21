@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.db import transaction
 from typing import Optional, List, Dict, Any
 
-from .models import Conversation, Message
+from ..models import Conversation, Message
 from .exceptions import (
     InvalidConversationStateError,
     MessageOrderingError,
@@ -19,15 +19,12 @@ class ConversationService:
     """Service class for managing chat conversations"""
 
     @staticmethod
-    def create_conversation(user, title: Optional[str] = None, category: Optional[str] = None, 
-                          tags: Optional[List[str]] = None) -> Conversation:
-        """Create a new conversation with optional metadata"""
+    def create_conversation(user, title: str) -> Conversation:
+        """Create a new conversation with a title"""
         with transaction.atomic():
             conversation = Conversation.objects.create(
                 user=user,
-                title=title or "New Conversation",
-                category=category,
-                tags=tags or []
+                title=title
             )
             return conversation
 
@@ -171,40 +168,3 @@ class ConversationService:
                 conversation.save()
                 return conversation
 
-
-class MessageService:
-    """Service class for managing chat messages"""
-
-    @staticmethod
-    def mark_message_delivered(message: Message) -> Message:
-        """Mark a message as delivered"""
-        message.mark_as_delivered()
-        return message
-
-    @staticmethod
-    def edit_message(message: Message, new_content: str) -> Message:
-        """Edit an existing message"""
-        message.content = new_content
-        message.is_edited = True
-        message.save()
-        return message
-
-    @staticmethod
-    def get_message_thread(message: Message) -> List[Message]:
-        """Get all messages in a thread starting from the given message"""
-        thread = []
-        current = message
-        
-        # Get parent messages
-        while current.parent:
-            thread.insert(0, current.parent)
-            current = current.parent
-        
-        # Add the current message
-        thread.append(message)
-        
-        # Get child messages
-        replies = message.replies.all().order_by('created_at')
-        thread.extend(replies)
-        
-        return thread

@@ -1,18 +1,15 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, views, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 
-from .models import Conversation
+from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
-from .services import ConversationService, MessageService
+from .services import ConversationService, MistralService, MessageService
 from .exceptions import (
     ChatBaseException,
     InvalidConversationStateError,
@@ -26,13 +23,14 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """ViewSet for managing conversations with error handling"""
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'patch', 'delete']  # Méthodes HTTP autorisées
     
     def handle_exception(self, exc):
         """Custom exception handling for chat-specific errors"""
         if isinstance(exc, ChatBaseException):
             return Response(
                 {'error': str(exc)},
-                status=exc.status_code
+                status=status.HTTP_400_BAD_REQUEST
             )
         elif isinstance(exc, ValidationError):
             return Response(
@@ -54,94 +52,97 @@ class ConversationViewSet(viewsets.ModelViewSet):
         )
     
     def create(self, request, *args, **kwargs):
-        """Create a new conversation with error handling"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        """Create a new conversation with initial message"""
+        initial_message = request.data.get('initial_message')
+        if not initial_message:
+            return Response(
+                {'error': 'initial_message is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         try:
             with transaction.atomic():
+                # Créer la conversation avec un titre temporaire
                 conversation = ConversationService.create_conversation(
                     user=request.user,
-                    title=serializer.validated_data.get('title'),
-                    category=serializer.validated_data.get('category'),
-                    tags=serializer.validated_data.get('tags', [])
+                    title=request.data.get('title') or initial_message[:50] + '...'
                 )
                 
-                return Response(
-                    self.get_serializer(conversation).data,
-                    status=status.HTTP_201_CREATED
-                )
-        except Exception as e:
-            return self.handle_exception(e)
-    
-    @action(detail=True, methods=['post'])
-    def messages(self, request, pk=None):
-        """Add a message to the conversation with error handling"""
-        conversation = self.get_object()
-        serializer = MessageSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        try:
-            # Add user message with transaction
-            with transaction.atomic():
+                # Créer le message initial
                 user_message = ConversationService.add_message_to_conversation(
                     conversation=conversation,
-                    content=request.data['message'],
+                    content=initial_message,
                     role='user',
-                    content_type=request.data.get('content_type', 'text'),
-                    metadata={'client_timestamp': request.data.get('timestamp')}
+                    content_type='text'
                 )
                 
-                # Generate AI response
+                # Générer la réponse Mistral
+                from .mistral_client import MistralClient
+                client = MistralClient()
                 try:
-                    model = request.data.get('model', 'mistral')
-                    from .mistral_client import MistralClient
-                    client = MistralClient()
+                    ai_response = client.generate_response(initial_message)
                     
-                    start_time = timezone.now()
-                    ai_response = client.generate_response(f"""
-                    You are ThiCodeAI, a web development assistant.
-                    User asks: {request.data['message']}
-                    Respond clearly and helpfully.
-                    """)
-                    response_time = (timezone.now() - start_time).total_seconds()
-                    
-                    # Create AI message using service
+                    # Créer le message AI
                     ai_message = ConversationService.add_message_to_conversation(
                         conversation=conversation,
                         content=ai_response,
                         role='assistant',
                         parent_message=user_message,
-                        content_type='text',
-                        metadata={
-                            'model': model,
-                            'response_time': response_time
-                        }
+                        content_type='text'
                     )
-                    
-                    # Update conversation title if it's the first message
-                    if conversation.messages.count() <= 2:  # User message + AI response
-                        ConversationService.update_conversation_title(conversation)
-                    
-                    return Response({
-                        'user_message': MessageSerializer(user_message).data,
-                        'ai_message': MessageSerializer(ai_message).data
-                    })
-                    
-                except AIServiceError as e:
-                    # Save user message even if AI fails
-                    return Response({
-                        'user_message': MessageSerializer(user_message).data,
-                        'error': str(e)
-                    }, status=e.status_code)
+                except Exception as e:
+                    # En cas d'erreur avec Mistral, on continue quand même
+                    print(f"Erreur Mistral: {str(e)}")
                 
-        except (InvalidConversationStateError, MessageOrderingError,
-                OrphanedMessageError) as e:
-            return Response(
-                {'error': str(e)},
-                status=e.status_code
-            )
+                # Récupérer la conversation mise à jour avec le message
+                conversation.refresh_from_db()
+                serializer = self.get_serializer(conversation)
+                
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED
+                )
+        except Exception as e:
+            return self.handle_exception(e)
     
+    @action(detail=True, methods=['get', 'post'])
+    def messages(self, request, pk=None):
+        """Get all messages or add a new message to the conversation"""
+        conversation = self.get_object()
+        
+        if request.method == 'GET':
+            messages = conversation.messages.all().order_by('created_at')
+            serializer = MessageSerializer(messages, many=True)
+            return Response(serializer.data)
+        
+        # POST - Add new message
+        content = request.data.get('content')
+        if not content:
+            return Response(
+                {'error': 'content is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Add user message with transaction
+            with transaction.atomic():
+                # Créer le message utilisateur
+                user_message = ConversationService.add_message_to_conversation(
+                    conversation=conversation,
+                    content=content,
+                    role='user',
+                    content_type='text'
+                )
+                
+                # Retourner immédiatement le message utilisateur
+                return Response({
+                    'user_message': MessageSerializer(user_message).data,
+                    'status': 'pending'
+                }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return self.handle_exception(e)
+
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
         """Archive a conversation with error handling"""
@@ -152,7 +153,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         except (InvalidConversationStateError, ConversationConflictError) as e:
             return Response(
                 {'error': str(e)},
-                status=e.status_code
+                status=status.HTTP_400_BAD_REQUEST
             )
     
     @action(detail=True, methods=['post'])
@@ -165,7 +166,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         except InvalidConversationStateError as e:
             return Response(
                 {'error': str(e)},
-                status=e.status_code
+                status=status.HTTP_400_BAD_REQUEST
             )
     
     @action(detail=True, methods=['post'])
@@ -184,6 +185,116 @@ class ConversationViewSet(viewsets.ModelViewSet):
         except (InvalidConversationStateError, ValidationError) as e:
             return Response(
                 {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST if isinstance(e, ValidationError)
-                else e.status_code
+                status=status.HTTP_400_BAD_REQUEST
             )
+    
+    @action(detail=True, methods=['get'], url_path='messages/(?P<message_id>[^/.]+)/status')
+    def message_status(self, request, pk=None, message_id=None):
+        """Check the status of a message and get AI response if available"""
+        conversation = self.get_object()
+        try:
+            # Récupérer le message utilisateur
+            user_message = get_object_or_404(conversation.messages, id=message_id)
+            
+            # Vérifier si une réponse AI existe
+            ai_message = conversation.messages.filter(
+                parent_message=user_message,
+                role='assistant'
+            ).first()
+            
+            if ai_message:
+                return Response({
+                    'status': 'completed',
+                    'ai_message': MessageSerializer(ai_message).data
+                })
+            
+            # Si pas de réponse AI, générer une
+            try:
+                from .mistral_client import MistralClient
+                client = MistralClient()
+                ai_response = client.generate_response(user_message.content)
+                
+                # Créer le message AI
+                ai_message = ConversationService.add_message_to_conversation(
+                    conversation=conversation,
+                    content=ai_response,
+                    role='assistant',
+                    parent_message=user_message,
+                    content_type='text'
+                )
+                
+                return Response({
+                    'status': 'completed',
+                    'ai_message': MessageSerializer(ai_message).data
+                })
+                
+            except Exception as e:
+                # En cas d'erreur avec Mistral
+                user_message.metadata['error'] = str(e)
+                user_message.save()
+                return Response({
+                    'status': 'error',
+                    'error': str(e)
+                })
+            
+        except Exception as e:
+            return self.handle_exception(e)
+
+
+class AskMistralView(views.APIView):
+    """Vue pour interroger Mistral AI"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        message = request.data.get('message')
+        if not message:
+            return Response(
+                {'error': 'message is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Appeler Mistral et obtenir la réponse
+            from .mistral_client import MistralClient
+            client = MistralClient()
+            response = client.generate_response(message)
+            
+            return Response({
+                'response': response
+            })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['get', 'post'])
+    def messages(self, request, pk=None):
+        """Get all messages or add a new message to the conversation"""
+        conversation = self.get_object()
+        
+        if request.method == 'GET':
+            messages = conversation.messages.all()
+            serializer = MessageSerializer(messages, many=True)
+            return Response(serializer.data)
+        
+        # POST method
+        serializer = MessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Add user message with transaction
+            with transaction.atomic():
+                user_message = ConversationService.add_message_to_conversation(
+                    conversation=conversation,
+                    content=request.data.get('content'),
+                    role='user',
+                    content_type='text'
+                )
+                
+                return Response(
+                    MessageSerializer(user_message).data,
+                    status=status.HTTP_201_CREATED
+                )
+        except Exception as e:
+            return self.handle_exception(e)
